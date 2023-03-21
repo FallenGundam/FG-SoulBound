@@ -1,0 +1,160 @@
+# name: soulbound
+# version 1.1.0
+# date: 2023-3-21
+# require: skript, skript-reflect, ItemNBTAPI
+# hook: MythicDropsProtect
+
+options:
+	system: &f[&3&lSoulBound&f]
+	bind_aliases1: &c靈魂綁定&a
+	bind_aliases2: &4強制綁定&b
+	bind_event1: &a使用後自動綁定
+
+
+import:
+	de.tr7zw.nbtapi.NBT
+	de.tr7zw.nbtapi.NBTItem
+
+#> 更新綁定，如果玩家改名可使用此方法更新綁定lore
+function SB_bindupdate(p:player,i:item) :: item:
+	if SB_ItemIsBinded({_i}) = true:
+		set {_nbt} to new NBTItem({_i})
+		if {_nbt}.hasTag("soulbound"):
+			set {_owner} to {_nbt}.getString("soulbound")
+			if uuid of {_p} = {_owner}:
+				set {_l::*} to lore of {_i}
+				set {_index} to size of {_l::*}
+				loop size of {_l::*} times:
+					if {_l::%{_index}%} contains "{@bind_aliases1}" or "{@bind_aliases2}":
+						set {_v::*} to {_l::%{_index}%} split at " "
+						set {_beforename} to {_v::2}
+						if name of {_p} != {_beforename}:
+							set line {_index} of lore of {_i} to "%{_v::1}% %name of {_p}%"
+							send "{@system} &a成功更新你的物品綁定" to {_p}
+						else:
+							send "{@system} &c你的物品不需要更新綁定" to {_p}
+							stop loop
+	else:
+		send "{@system} &c該物品沒有綁定" to {_p}
+	return {_i}
+#> 物品是否已綁定
+function SB_ItemIsBinded(i:item) :: boolean:
+	if "%lore of {_i}%" contains "{@bind_aliases1}" or "{@bind_aliases2}":
+		return true
+	return false
+
+#> 判斷物品是否為該玩家的物品
+function SB_Bind_conditions(p:player,i:item,msg:boolean) :: boolean:
+	if SB_ItemIsBinded({_i}) = true:
+		set {_nbt} to new NBTItem({_i})
+		if {_nbt}.hasTag("soulbound"):
+			set {_owner} to {_nbt}.getString("soulbound")
+			if {_owner} = uuid of {_p}:
+				return true
+			else:
+				if {_msg} = true:
+					set {_pname} to {_owner} parsed as offlineplayer 
+					send "{@system} &c該物品屬於 %{_pname}%" to {_p}
+				return false
+
+#> SB_BindItem
+#> @param p - player
+#> @param i - itemstack
+#> @param type - "normal" or "force"
+function SB_BindItem(i:item,p:offlineplayer,type:text) :: item:
+	set {_nbt} to new NBTItem({_i})
+	{_nbt}.setString("soulbound",uuid of {_p})
+	set {_newitem} to {_nbt}.getItem()
+	if {_type} = "normal":
+		add "{@bind_aliases1} %name of {_p}%" to lore of {_newitem}
+	else if {_type} = "force":
+		add "{@bind_aliases2} %name of {_p}%" to lore of {_newitem}
+	return {_newitem}
+
+
+function SB_unbindItem(i:item,type:text) :: item:
+	set {_nbt} to new NBTItem({_i})
+	if {_nbt}.hasTag("soulbound"):
+		{_nbt}.removeKey("soulbound")
+		set {_newitem} to {_nbt}.getItem()
+		set {_lore::*} to lore of {_newitem}
+		set {_index} to size of {_lore::*}
+		loop size of {_lore::*} times:
+			if {_type} = "force":
+				if {_lore::%{_index}%} contains "{@bind_aliases1}" or "{@bind_aliases2}":
+					delete line {_index} of lore of {_newitem}
+			else:
+				if {_lore::%{_index}%} contains "{@bind_aliases1}":
+					delete line {_index} of lore of {_newitem}
+			remove 1 from {_index}
+		return {_newitem}
+
+
+command /soulbound [<text>] [<offlineplayer>] [<text>]: 
+	permission: sb.admin
+	permission message: {@system} &c你沒有使用此指令的權限!
+	aliases: sb
+	trigger:
+		if arg-1 is not set:
+			send "&7----------{@system}&7----------"
+			send " &f/sb addforce &d將手上武器添加綁定標籤 {@bind_event1}"
+			send " &f/sb unbind &d強制解綁手上物品"
+			send " &f/sb bind [player] [type] &d綁定手上物品"
+			send "&7------------------------------"
+		else if arg-1 is "addforce":
+			player's tool isn't air
+			if SB_ItemIsBinded(player's tool) = false:
+				add "{@bind_event1}" to lore of player's tool
+				send "{@system} &a添加成功!"
+			else:
+				send "{@system} &c該物品綁定過了"
+		else if arg-1 is "unbind":
+			if SB_ItemIsBinded(player's tool) = true:
+				set player's tool to SB_unbindItem(tool of player,"force")
+				send "{@system} &a成功解除綁定!"
+			else:
+				send "{@system} &c該物品尚未綁定"
+		else if arg-1 is "bind":
+			if player's tool isn't air:
+				if SB_ItemIsBinded(player's tool) = false:
+					if arg-2 isn't set:
+						set {_p} to player
+					else:
+						set {_p} to arg-2 
+
+					if arg-3 isn't set:
+						set {_t} to "normal"
+					else:
+						set {_t} to arg-3
+					set player's tool to SB_BindItem(player's tool, {_p}, "%{_t}%")
+					send "{@system} &a成功綁定到玩家 %{_p}%!"
+				else:
+					send "{@system} &c該物品綁定過了"
+
+on damage:
+	if SB_Bind_conditions( attacker, tool of attacker, true ) = false:
+		cancel event
+
+on click:
+	if SB_Bind_conditions( player, tool of player, true ) = false:
+		cancel event
+
+on inventory click:
+	if type of event-inventory = player inventory:
+		if "%lore of event-slot%" contains "{@bind_event1}":
+			cancel event
+			set {_item} to event-slot
+			set {_line} to size of lore of {_item}
+			loop size of lore of {_item} times:
+				if line {_line} of lore of {_item} contains "{@bind_event1}":
+					delete line {_line} of lore of {_item}
+				remove 1 from {_line}
+			set event-slot to SB_BindItem( {_item}, player, "force" )
+			send "{@system} &a已自動綁定物品"
+	if SB_Bind_conditions(player,event-slot,true) = false:
+		cancel event
+
+on damage of dropped items:
+	set {_nbti} to new NBTItem(victim.getItemStack())
+	if {_nbti}.hasTag("soulbound"):
+		cancel event
