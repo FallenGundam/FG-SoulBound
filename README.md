@@ -2,6 +2,7 @@
 物品的靈魂綁定腳本，當物品綁定後其他玩家將無法使用  
 採用uuid綁定非綁定玩家名稱，玩家更換名字可以手動更新綁定  
 支持掉落物保護，需使用我的另一個腳本MythicDropProtect掛勾  
+綁定後的物品掉落後不會損毀 (killall的話還是會刪除)
 
 ![image](https://user-images.githubusercontent.com/54828956/226693463-08518507-1676-4319-82c9-bfef0c7b6b4e.png)
 
