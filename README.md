@@ -10,6 +10,7 @@
     skript 2.6
     skript-reflect
     ItemNBTAPI
+    MythicDropProtect (建議搭配使用)
 
 
 # config:
