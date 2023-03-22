@@ -131,6 +131,14 @@ command /soulbound [<text>] [<offlineplayer>] [<text>]:
 				else:
 					send "{@system} &c該物品綁定過了"
 
+command soulbound:
+	trigger:
+		open chest inventory with 3 rows named "&3靈魂綁定介面" to player
+		loop 27 times:
+			set slot (loop-value)-1 of player's current inventory to black glass pane named ""
+		set slot 10 of player's current inventory to green wool named "&a綁定此物品"
+		set slot 13 of player's current inventory to player's tool
+		set slot 16 of player's current inventory to red wool named "&c解除綁定此物品"
 on damage:
 	if SB_Bind_conditions( attacker, tool of attacker, true ) = false:
 		cancel event
@@ -153,7 +161,29 @@ on inventory click:
 			send "{@system} &a已自動綁定物品"
 	if SB_Bind_conditions(player,event-slot,true) = false:
 		cancel event
-
+	if name of event-inventory is "&3靈魂綁定介面":
+		cancel event
+		if type of event-inventory is chest inventory:
+			if index of event-slot is 10:
+				if SB_ItemIsBinded(player's tool) = false:
+					if player's money >= {@bind_price}:
+						remove {@bind_price} from player's money
+						set player's tool to SB_BindItem(player's tool,player,"normal")
+						send "{@system} &a成功綁定物品! 花費了 &e{@bind_price}$"
+						play sound "ENTITY_LEASH_KNOT_PLACE" with volume 1 with pitch 0.75 at player
+						close player's inventory
+					else:
+						send "{@system} &c餘額不足"
+				else:
+					send "{@system} &c該物品綁定過了"
+			else if index of event-slot is 16:
+				if "%lore of player's tool%" contains "{@bind_aliases1}":
+					set player's tool to SB_unbindItem(player's tool,"normal")
+					send "{@system} &a成功解除綁定!"
+					play sound "ENTITY_LEASH_KNOT_PLACE" with volume 1 with pitch 2 at player
+					close player's inventory
+				else:
+					send "{@system} &c該物品不能解除綁定"
 on damage of dropped items:
 	set {_nbti} to new NBTItem(victim.getItemStack())
 	if {_nbti}.hasTag("soulbound"):
