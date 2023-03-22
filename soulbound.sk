@@ -1,5 +1,5 @@
 # name: soulbound
-# version 1.1.0
+# version 1.1.2
 # date: 2023-3-21
 # require: skript, skript-reflect, ItemNBTAPI
 # hook: MythicDropsProtect
@@ -8,7 +8,9 @@ options:
 	system: &f[&3&lSoulBound&f]
 	bind_aliases1: &c靈魂綁定&a
 	bind_aliases2: &4強制綁定&b
-	bind_event1: &a使用後自動綁定
+	bind_tag: &a使用後自動綁定
+	bind_price: 500
+	
 
 
 import:
@@ -97,14 +99,14 @@ command /soulbound [<text>] [<offlineplayer>] [<text>]:
 	trigger:
 		if arg-1 is not set:
 			send "&7----------{@system}&7----------"
-			send " &f/sb addforce &d將手上武器添加綁定標籤 {@bind_event1}"
+			send " &f/sb addforce &d將手上武器添加綁定標籤 {@bind_tag}"
 			send " &f/sb unbind &d強制解綁手上物品"
 			send " &f/sb bind [player] [type] &d綁定手上物品"
 			send "&7------------------------------"
 		else if arg-1 is "addforce":
 			player's tool isn't air
 			if SB_ItemIsBinded(player's tool) = false:
-				add "{@bind_event1}" to lore of player's tool
+				add "{@bind_tag}" to lore of player's tool
 				send "{@system} &a添加成功!"
 			else:
 				send "{@system} &c該物品綁定過了"
@@ -136,7 +138,10 @@ command soulbound:
 		open chest inventory with 3 rows named "&3靈魂綁定介面" to player
 		loop 27 times:
 			set slot (loop-value)-1 of player's current inventory to black glass pane named ""
-		set slot 10 of player's current inventory to green wool named "&a綁定此物品"
+		if SB_ItemIsBinded(player's tool) = false:
+			set slot 10 of player's current inventory to green wool named "&a綁定此物品"
+		else:
+			set slot 10 of player's current inventory to blue wool named "&2更新物品綁定"
 		set slot 13 of player's current inventory to player's tool
 		set slot 16 of player's current inventory to red wool named "&c解除綁定此物品"
 on damage:
@@ -175,7 +180,7 @@ on inventory click:
 					else:
 						send "{@system} &c餘額不足"
 				else:
-					send "{@system} &c該物品綁定過了"
+					set player's tool to SB_bindupdate( player, tool of player )
 			else if index of event-slot is 16:
 				if "%lore of player's tool%" contains "{@bind_aliases1}":
 					set player's tool to SB_unbindItem(player's tool,"normal")
